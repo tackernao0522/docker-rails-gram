@@ -169,3 +169,22 @@ gem 'devise' # 追加
 
 </html>
 ```
+
+## 3-2 実際にユーザーの新規登録ができるか確認
+
++ ユーザー登録してログインしてみる(できたらOK)<br>
+
+### 2. 登録したユーザーのレコードを取得
+
++ `$ rails console`を実行<br>
+
++ `irb(main):001:0> User.first`を実行<br>
+
+```:terminal
+irb(main):001:0> User.first
+  User Load (2.1ms)  SELECT `users`.* FROM `users` ORDER BY `users`.`id` ASC LIMIT 1
+=> #<User id: 1, email: "takaki55730317@gmail.com", created_at: "2022-09-14 12:17:43.840313000 +0000", updated_at: "2022-09-14 12:17:43.840313000 +0000">
+irb(main):002:0>
+```
+
++ [Rails ドキュメント first](http://railsdoc.com/references/first) <br>
