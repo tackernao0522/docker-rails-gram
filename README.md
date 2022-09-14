@@ -202,3 +202,115 @@ end
 
 + locahost:3000 にアクセスしてみる<br>
 
+## 2-4 Bootstrapの導入
+
+### 2. BootstrapをWebpackerで導入
+
++ `$ yarn add jquery bootstrap popper.js`を実行<br>
+
++ `config/webpack/environment.js`を編集<br>
+
+```js:environment.js
+const { environment } = require('@rails/webpacker')
+
+module.exports = environment
+
+// 追加
+const webpack = require('webpack')
+environment.plugins.append(
+  'Provide',
+  new webpack.ProvidePlugin({
+    $: 'jquery/src/jquery',
+    jQuery: 'jquery/src/jquery',
+    Popper: ['popper.js', 'default']
+  })
+)
+```
+
++ `$ mkdir app/javascript/stylesheets && touch $_/application.scss`を実行<br>
+
++ `app/javascript/stylesheets/application.scss`を編集<br>
+
+```scss:application.scss
+@import '~bootstrap/scss/bootstrap';
+```
+
++ `app/javascript/packs/applicattion.js`を編集<br>
+
+```js:application.js
+// This file is automatically compiled by Webpack, along with any other files
+// present in this directory. You're encouraged to place your actual application logic in
+// a relevant structure within app/javascript and only use these pack files to reference
+// that code so it'll be compiled.
+
+import 'bootstrap'; // 追加
+import '../stylesheets/application'; // 追加
+import Rails from "@rails/ujs"
+import Turbolinks from "turbolinks"
+import * as ActiveStorage from "@rails/activestorage"
+import "channels"
+
+Rails.start()
+Turbolinks.start()
+ActiveStorage.start()
+```
+
++ `app/views/layouts/appliction.html.erb`を編集<br>
+
+```html:applictioan.html.erb
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>App</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+
+    <!-- 追加 -->
+    <%= stylesheet_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+  </head>
+
+  <body>
+    <%= yield %>
+  </body>
+</html>
+```
+
++ `app/views/pages/home.html.erb`を編集<br>
+
+```html:home.html.erb
+<p>ここのページは仮のトップページです。</p>
+
+<!-- 追記 -->
+<%= link_to "仮のボタンです", "#", class: "btn btn-primary" %>
+```
+
++ `package.json`を編集<br>
+
+```json:package.json
+{
+  "name": "app",
+  "private": true,
+  "dependencies": {
+    "@rails/actioncable": "^6.0.0",
+    "@rails/activestorage": "^6.0.0",
+    "@rails/ujs": "^6.0.0",
+    "@rails/webpacker": "5.4.3",
+    "bootstrap": "^4.5.3", // 修正
+    "jquery": "^3.6.1",
+    "popper.js": "^1.16.1",
+    "turbolinks": "^5.2.0",
+    "webpack": "^4.46.0",
+    "webpack-cli": "^3.3.12"
+  },
+  "version": "0.1.0",
+  "devDependencies": {
+    "webpack-dev-server": "^3"
+  }
+}
+```
+
++ `yarn.lock`を`node_modules`を削除して再度`$ yarn install`する<br>
