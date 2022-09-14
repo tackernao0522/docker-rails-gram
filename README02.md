@@ -188,3 +188,41 @@ irb(main):002:0>
 ```
 
 + [Rails ドキュメント first](http://railsdoc.com/references/first) <br>
+
+## 3-3 サインアウトリンクの追加
+
++ [link_toメソッドを使ったリンクの作成](https://www.javadrive.jp/rails/template/index8.html) <br>
+
++ サインアウトのルーティング<br>
+
+```
+destroy_user_session DELETE /users/sign_out(.:format)   devise/sessions#destroy
+```
+
++ `app/views/pages/home.html.erb`を編集<br>
+
+```html:home.html.erb
+<%= link_to "サインアウト", destroy_user_session_path, method: :delete %> <!-- 追加 -->
+
+<p>ここのページは仮のトップページです。</p>
+
+<%= link_to "仮のボタンです", "#", class: "btn btn-primary" %>
+```
+
++ サインアウトしてみる<br>
+
+### 2. サインインしていないときはサインアウトリンクを非表示
+
++ `app/views/pages/home.html.erb`を編集<br>
+
+```html:home.html.erb
+<% if user_signed_in? %> <!-- 追加 もしサインインしていたらサインアウトリンクは表示されない -->
+<%= link_to "サインアウト", destroy_user_session_path, method: :delete %>
+<% end %> <!-- 追加 -->
+
+<p>ここのページは仮のトップページです。</p>
+
+<%= link_to "仮のボタンです", "#", class: "btn btn-primary" %>
+```
+
++ [Rails deviseで使えるようになるヘルパーメソッド一覧](https://qiita.com/tobita0000/items/866de191635e6d74e392) <br>
