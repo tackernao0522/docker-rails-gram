@@ -314,3 +314,166 @@ ActiveStorage.start()
 ```
 
 + `yarn.lock`を`node_modules`を削除して再度`$ yarn install`する<br>
+
+# 2-5 ナビゲーションヘッダーの作成
+
++ [Bootstrapの公式ドキュメントのNavbar](https://getbootstrap.com/docs/4.1/components/navbar/) <br>
+
+1. ナビゲーションヘッダーのビューを作成<br>
+
++ `app/views/layouts/application.html.erb`を編集<br>
+
+```html:application.html.erb
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>App</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+  <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+
+  <%= stylesheet_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+</head>
+
+<body>
+  <!-- 追加 -->
+  <nav class="navbar navbar-expand-lg navbar-light">
+    <div class="container">
+      <%= link_to "", root_path, class: "navbar__brand navbar__mainLogo" %>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav  ml-md-auto align-items-center">
+          <li>
+            <%= link_to "投稿", "#", class: "btn btn-primary" %>
+          </li>
+          <li>
+            <%= link_to "", "#", class: "nav-link commonNavIcon profile-icon" %>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <!-- ここまで -->
+
+  <%= yield %>
+</body>
+
+</html>
+```
+
++ [link_to](http://railsdoc.com/references/link_to) <br>
+
+## 2. ナビゲーションヘッダーのscssファイルをインポート
+
++ `app/javascript/stylesheets/application.scss`を編集<br>
+
+```scss:application.scss
+@import '~bootstrap/scss/bootstrap';
+@import 'layouts/navbar'; // 追加
+```
+
++ `$ mkdir app/javascript/stylesheets/layouts && touch $_/navbar.scss`を実行<br>
+
++ `app/javascript/stylesheets/layouts/navbar.scss`を編集<br>
+
+```scss:navbar.scss
+.navbar {
+  background-color: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.0975);
+  height: 77px;
+  &__brand {
+    height: 35px;
+    width: 176px;
+    background-size: 114px;
+  }
+  &__mainLogo {
+    background-repeat: no-repeat;
+    background-image: url('~logo.png');
+  }
+  &-nav {
+    & > li {
+      margin-left: 20px;
+      &:first-child {
+        margin-left: 0;
+      }
+      .commonNavIcon {
+        height: 24px;
+        width: 24px;
+        background-size: 22px !important;
+        background-repeat: no-repeat;
+      }
+      .profile-icon {
+        background-image: url('~parts3.png');
+      }
+    }
+  }
+}
+```
+
++ localhost:3000 にアクセスして確認<br>
+
+## 4. 部分テンプレートを使って共通化
+
++ `$ mkdir app/views/partial && touch $_/_navbar.html.erb`を編集<br>
+
++ `app/views/partial/_navbar.html.erb`を編集<br>
+
+```html:_navbar.html.erb
+<nav class="navbar navbar-expand-lg navbar-light">
+  <div class="container">
+    <%= link_to "", root_path, class: "navbar__brand navbar__mainLogo" %>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav  ml-md-auto align-items-center">
+        <li>
+          <%= link_to "投稿", "#", class: "btn btn-primary" %>
+        </li>
+        <li>
+          <%= link_to "", "#", class: "nav-link commonNavIcon profile-icon" %>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+```
+
++ `app/views/layouts/applictioan.html.erb`を編集<br>
+
+```html:application.html.erb
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>App</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+  <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+
+  <%= stylesheet_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+</head>
+
+<body>
+  <%= render 'partial/navbar' %> <!-- 編集 -->
+
+  <%= yield %>
+</body>
+
+</html>
+```
+
++ [Action View の概要](https://railsguides.jp/action_view_overview.html#%E3%83%91%E3%83%BC%E3%82%B7%E3%83%A3%E3%83%AB) <br>
+
++ localhost:3000 にアクセスしてみる<br>
