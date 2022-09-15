@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>App</title>
+  <title>Techpitgram</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
@@ -28,7 +28,9 @@
     </div>
     <% end %>
 
-    <%= yield %>
+    <div class="container">
+      <%= yield %>
+    </div>
 
     <%= render 'partial/footer' %>
   </div>
