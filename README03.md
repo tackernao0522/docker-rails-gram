@@ -1,3 +1,10 @@
+## 3-6 サインイン画面の見た目を整える
+
+### 1. サインイン画面のビューを作成
+
++ `app/views/devise/sessions/new.html.erb`を編集<br>
+
+```html:new.html.erb
 <div class="main">
   <div class="card devise-card">
     <div class="form-wrap">
@@ -28,3 +35,6 @@
     </div>
   </div>
 </div>
+```
+
++ http://localhost:3000/users/sign_in にアクセスしてみる<br>
