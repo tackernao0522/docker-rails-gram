@@ -296,3 +296,204 @@ end
 + [クロスサイトリクエストフォージェリ (CSRF)](https://railsguides.jp/security.html#%E3%82%AF%E3%83%AD%E3%82%B9%E3%82%B5%E3%82%A4%E3%83%88%E3%83%AA%E3%82%AF%E3%82%A8%E3%82%B9%E3%83%88%E3%83%95%E3%82%A9%E3%83%BC%E3%82%B8%E3%82%A7%E3%83%AA-csrf) <br>
 
 + [Devise - Strong Parameters](https://github.com/plataformatec/devise#strong-parameters) <br>
+
+## 3-5 サインアップ画面の見た目を整える
+
+### 1. サインアップ画面のビューを作成
+
++ `app/views/devise/registrations/new.html.erb`を編集<br>
+
+```html:new.html.erb
+<div class="main">
+  <div class="card devise-card">
+    <div class="form-wrap">
+      <div class="form-group text-center">
+        <h2 class="logo-img mx-auto"></h2>
+        <p class="text-secondary">友達の写真や動画をチェックしよう</p>
+      </div>
+      <%= form_with scope: resource, as: resource_name, url: registration_path(resource_name), local: true do |f| %>
+      <div class="form-group">
+        <%= f.email_field :email, autofocus: true, placeholder: "メールアドレス", class: "form-control" %>
+      </div>
+
+      <div class="form-group">
+        <%= f.text_field :name, autofocus: true, placeholder: "フルネーム", class: "form-control" %>
+      </div>
+
+      <div class="form-group">
+        <%= f.password_field :password, autocomplete: "off", placeholder: "パスワード", class: "form-control" %>
+      </div>
+
+      <div class="form-group">
+        <%= f.password_field :password_confirmation, autocomplete: "off", placeholder: "パスワードの確認", class: "form-control" %>
+      </div>
+
+      <div class="actions">
+        <%= f.submit "登録する", class: "btn btn-primary w-100" %>
+      </div>
+      <% end %>
+
+      <br>
+
+      <p class="devise-link">
+        アカウントをお持ちですか？
+        <%= link_to "サインインする", new_user_session_path %>
+      </p>
+    </div>
+  </div>
+</div>
+```
+
++ [Bootstrap公式ドキュメント](https://getbootstrap.com/) <br>
+
+### 2. scssファイルをインポート
+
++ `app/javascript/stylesheets/application.scss`を編集<br>
+
+```scss:application.scss
+@import '~bootstrap/scss/bootstrap';
+@import 'layouts/navbar';
+@import 'common'; // 追加
+@import 'users/devise'; // 追加
+```
+
+### 3. サインアップ画面のscssを追加
+
++ `$ touch app/javascript/stylesheets/common.scss`を実行<br>
+
++ `app/javascript/stylesheets/common.scss`を編集<br>
+
+```scss:common.scss
+body {
+  background-color: #fafafa;
+  font-size: 14px;
+  color: #262626;
+}
+```
+
++ `$ mkdir app/javascript/stylesheets/users && touch $_/devise.scss`を実行<br>
+
++ `app/javascript/stylesheets/users/devise.scss`を編集<br>
+
+```scss:devise.scss
+.main {
+  max-width: 960px;
+  margin: 0 auto;
+  width: 90%;
+  padding: 100px 75px 100px;
+  display: block;
+  flex: 1;
+  flex-basis: auto;
+  box-sizing: border-box;
+}
+
+.devise-card {
+  border: none;
+}
+
+.form-wrap {
+  max-width: 400px;
+  width: 100%;
+  margin: 50px auto;
+}
+
+.logo-img {
+  background-image: url('~logo.png');
+  background-repeat: no-repeat;
+  height: 56px;
+  width: 180px;
+  background-size: 160px;
+  background-size: 180px !important;
+}
+
+.form-control {
+  border: 1px solid #dcdfe6;
+  font-size: inherit;
+}
+
+.devise-link {
+  text-align: center;
+  margin: 16px 0;
+}
+
+#wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+footer {
+  margin-top: auto;
+}
+
+@media screen and (max-width: 768px) {
+  .main {
+    padding: 75px 0;
+  }
+  .devise-card {
+    background-color: #fafafa;
+  }
+}
+```
+
+### 4. footerの作成
+
++ `app/views/layouts/application.html.erb`を編集<br>
+
+```html:application.html.erb
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>App</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+  <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+
+  <%= stylesheet_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+</head>
+
+<body>
+  <div id="wrapper"> <!-- 追加 -->
+    <%= render 'partial/navbar' if current_user %>
+
+    <% if flash[:notice] %>
+    <div class="alert alert-info">
+      <%= flash[:notice] %>
+    </div>
+    <% end %>
+    <% if flash[:alert] %>
+    <div class="alert alert-danger">
+      <%= flash[:alert] %>
+    </div>
+    <% end %>
+
+    <%= yield %>
+
+    <%= render 'partial/footer' %> <!-- 追加 -->
+  </div> <!-- 追加 -->
+</body>
+
+</html>
+```
+
++ `$ touch app/views/partial/_footer.html.erb`を実行<br>
+
++ `app/views/partial/_footer.html.erb`を編集<br>
+
+```html:_footer.html.erb
+<footer>
+  <div class="container">
+    <div class="text-center">
+      <p>
+        Copyright ©︎ Techpit
+      </p>
+    </div>
+  </div>
+</footer>
+```
+
++ http://localhost:3000/users/sign_up にアクセスしてみる<br>
