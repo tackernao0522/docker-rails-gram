@@ -226,3 +226,73 @@ destroy_user_session DELETE /users/sign_out(.:format)   devise/sessions#destroy
 ```
 
 + [Rails deviseで使えるようになるヘルパーメソッド一覧](https://qiita.com/tobita0000/items/866de191635e6d74e392) <br>
+
+## 3-4 usersテーブルにnameカラムを追加
+
++ [devise にusername カラムを追加し、usernameを登録できるようにする。](https://qiita.com/yasuno0327/items/ff17ddb6a4167fc6b471) <br>
+
+
+### 1. カラムを追加するためのマイグレーションファイルの作成
+
++ [rails generate migrationコマンドまとめ](https://qiita.com/zaru/items/cde2c46b6126867a1a64) <br>
+
++ `$ rails g migration AddNameToUser name:string`を実行<br>
+
++ `db/migrate/add_name_to_user.rb`を編集(null: falseでNULLを禁止)<br>
+
+```rb:add_name_to_user.rb
+class AddNameToUser < ActiveRecord::Migration[6.1]
+  def change
+    add_column :users, :name, :string, null: false # 編集
+  end
+end
+```
+
+### 2. マイグレーションファイルを実行
+
++ `$ rails db:migrate`を実行<br>
+
+### 3. バリデーションの設定
+
++ `app/models/user.rb`を編集<br>
+
+```rb:user.rb
+class User < ApplicationRecord
+  # Include default devise modules. Others available are:
+  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :validatable
+
+  validates :name, presence: true, length: { maximum: 50 } # 追加
+end
+```
+
++ [Active Record バリデーション](https://railsguides.jp/active_record_validations.html) <br>
+
+### 4. nameカラムを保存できるようにする
+
++ [Rails初学者がつまずきやすい「ストロングパラメータの仕組み」](https://www.transnet.ne.jp/2016/05/18/rails%E5%88%9D%E5%AD%A6%E8%80%85%E3%82%B9%E3%83%88%E3%83%AD%E3%83%B3%E3%82%B0%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF%E3%83%BCcolnr/) <br>
+
++ `app/controllers/application_controller.rb`を編集<br>
+
+```rb:application_controller.rb
+class ApplicationController < ActionController::Base
+
+  # 追加
+  protect_from_forgery with: :exception
+
+  before_action :configure_permitted_parameters, if: :devise_controller?
+
+  protected
+
+  def configure_permitted_parameters
+    devise_parameter_sanitizer.permit(:sign_up, keys: [:name])
+    devise_parameter_sanitizer.permit(:account_update, keys: [:name])
+  end
+  # ここまで
+end
+```
+
++ [クロスサイトリクエストフォージェリ (CSRF)](https://railsguides.jp/security.html#%E3%82%AF%E3%83%AD%E3%82%B9%E3%82%B5%E3%82%A4%E3%83%88%E3%83%AA%E3%82%AF%E3%82%A8%E3%82%B9%E3%83%88%E3%83%95%E3%82%A9%E3%83%BC%E3%82%B8%E3%82%A7%E3%83%AA-csrf) <br>
+
++ [Devise - Strong Parameters](https://github.com/plataformatec/devise#strong-parameters) <br>
