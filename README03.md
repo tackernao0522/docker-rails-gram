@@ -38,3 +38,246 @@
 ```
 
 + http://localhost:3000/users/sign_in にアクセスしてみる<br>
+
+# 4章 ユーザープロフィール機能
+
+## 4-1 プロフィールページの作成
+
+### 1. プロフィールページのルーティングの追加
+
++ `config/routes.rb`を編集<br>
+
+```rb:routes.rb
+Rails.application.routes.draw do
+  devise_for :users
+  root 'pages#home'
+
+  get '/users/:id', to: 'users#show', as: 'user' # 追加 user_pathになる
+end
+```
+
++ [名前付きルーティング](https://railsguides.jp/routing.html#%E5%90%8D%E5%89%8D%E4%BB%98%E3%81%8D%E3%83%AB%E3%83%BC%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0) <br>
+
+```
+user GET    /users/:id(.:format)  users#show
+```
+
+### 2. コントローラの作成
+
++ `$ rails g controller users`を実行<br>
+
+### 3. 作成したコントローラにアクションを追加
+
++ `app/controllers/users_controller.rb`を編集<br>
+
+```rb:users_controller.rb
+class UsersController < ApplicationController
+
+  def show
+    @user = User.find_by(id: params[:id])
+  end
+end
+```
+
++ [クラスの概念](https://www.javadrive.jp/ruby/class/) <br>
+
+### 4. profile_photoカラムを追加
+
++ `$ rails g migration AddProfilePhotoToUsers profile_photo:string`を実行<br>
+
++ `$ rails db:migrate`を実行<br>
+
+### profile_photoカラムに何もない場合、デフォルトのアイコンを表示
+
++ `app/helpers/application_helper.rb`を編集<br>
+
+```rb:application_helper.rb
+module ApplicationHelper
+
+  def avatar_url(user)
+    return user.profile_photo unless  user.profile_photo.nil?
+      gravatar_id = Digest::MD5::hexdigest(user.email).downcase
+      "https://techpit-market-prod.s3.amazonaws.com/uploads/part_attachment/file/15782/2da91636-af73-4eed-91cd-320a0399609c.jpg"
+  end
+end
+```
+
++ `app/views/layouts/application.html.erb`を編集<br>
+
+```html:application.html.erb
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Techpitgram</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+  <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+
+  <%= stylesheet_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+</head>
+
+<body>
+  <div id="wrapper">
+    <%= render 'partial/navbar' if current_user %>
+
+    <% if flash[:notice] %>
+    <div class="alert alert-info">
+      <%= flash[:notice] %>
+    </div>
+    <% end %>
+    <% if flash[:alert] %>
+    <div class="alert alert-danger">
+      <%= flash[:alert] %>
+    </div>
+    <% end %>
+
+    <!-- 編集 -->
+    <div class="container">
+      <%= yield %>
+    </div>
+    <!-- ここまで -->
+
+    <%= render 'partial/footer' %>
+  </div>
+</body>
+
+</html>
+```
+
++ [Grid system](https://getbootstrap.com/docs/4.0/layout/grid/) <br>
+
++ `$ touch app/views/users/show.html.erb`を実行<br>
+
++ `app/views/users/show.html.erb`を編集<br>
+
+```html:show.html.erb
+<div class="profile-wrap">
+  <div class="row">
+    <div class="col-md-4 text-center">
+      <%= image_tag avatar_url(@user), class: "round-img" %>
+    </div>
+    <div class="col-md-8">
+      <div class="row">
+        <h1><%= @user.name %></h1>
+        <%= link_to "プロフィールを編集", edit_user_registration_path, class: "btn btn-outline-dark common-btn edit-profile-btn" %>
+        <button type="button" class="setting" data-toggle="modal" data-target="#exampleModal"></button>
+
+        <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+          aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">設定</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">X</span>
+                </button>
+              </div>
+              <div class="list-group text-center">
+                <%= link_to "サインアウト", destroy_user_session_path, method: :delete, class: "list-group-item list-group-item-action" %>
+                <%= link_to "キャンセル", "#", class: "list-group-item list-group-item-action", "data-dismiss": "modal" %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% if @user == current_user %>
+      <div class="row">
+        <p>
+          <%= @user.email %>
+        </p>
+      </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+```
+
++ `app/javascript/stylesheets/application.scss`を編集<br>
+
+```scss:application.scss
+@import '~bootstrap/scss/bootstrap';
+@import 'layouts/navbar';
+@import 'common';
+@import 'users/devise';
+@import 'users/show'; // 追加
+```
+
++ `$ touch app/javascript/stylesheets/users/show.scss`を実行<br>
+
++ `app/javascript/stylesheets/users/show.scss`を編集<br>
+
+```scss:show.scss
+.profile-wrap {
+  margin: 40px 0px;
+}
+
+.round-img {
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+}
+
+.edit-profile-btn {
+  margin: 15px 0 0 15px;
+  font-weight: bold;
+  height: 26px;
+  line-height: 26px;
+  padding: 0 26px;
+  border-color: #dbdbdb;
+  font-size: 14px;
+}
+
+.setting {
+  background-image: url('~parts4.png');
+  background-repeat: no-repeat;
+  height: 24px;
+  width: 24px;
+  background-color: transparent;
+  margin: 18px 0 0 10px;
+  background-size: 22px !important;
+  border: none;
+  &:hover {
+    cursor: pointer;
+  }
+}
+```
+
++ [データベースをリセットする](https://railsguides.jp/active_record_migrations.html#%E3%83%87%E3%83%BC%E3%82%BF%E3%83%99%E3%83%BC%E3%82%B9%E3%82%92%E3%83%AA%E3%82%BB%E3%83%83%E3%83%88%E3%81%99%E3%82%8B) <br>
+
++ `$ rails db:reset`を実行<br>
+
++ http://localhost:3000/users/sign_up にアクセスして、ユーザー登録して http://localhost:3000/users/1 にアクセスしてみる<br>
+
+### ナビゲーションヘッダーにプロフィールページに飛ぶリンクを追加
+
++ [Rails deviseで使えるようになるヘルパーメソッド一覧](https://qiita.com/tobita0000/items/866de191635e6d74e392) <br>
+
++ `app/views/partial/_navbar.html.erb`を編集<br>
+
+```html:_navbar.html.erb
+<nav class="navbar navbar-expand-lg navbar-light">
+  <div class="container">
+    <%= link_to "", root_path, class: "navbar__brand navbar__mainLogo" %>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav  ml-md-auto align-items-center">
+        <li>
+          <%= link_to "投稿", "#", class: "btn btn-primary" %>
+        </li>
+        <li>
+          <%= link_to "", user_path(current_user), class: "nav-link commonNavIcon profile-icon" %>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+```
+
++ localhost:3000 にアクセスしてみる<br>
