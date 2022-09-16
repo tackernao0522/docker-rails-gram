@@ -10,7 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2022_09_15_051031) do
+ActiveRecord::Schema.define(version: 2022_09_16_044845) do
+
+  create_table "photos", charset: "utf8mb4", force: :cascade do |t|
+    t.string "image", null: false
+    t.bigint "post_id", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["post_id"], name: "index_photos_on_post_id"
+  end
+
+  create_table "posts", charset: "utf8mb4", force: :cascade do |t|
+    t.string "caption"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["user_id"], name: "index_posts_on_user_id"
+  end
 
   create_table "users", charset: "utf8mb4", force: :cascade do |t|
     t.string "email", default: "", null: false
