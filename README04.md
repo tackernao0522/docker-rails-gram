@@ -346,7 +346,7 @@ class ImageUploader < CarrierWave::Uploader::Base
   # end
 
   # 追加
-  viersion :medium do
+  version :medium do
     process resize_to_fill: [1080, 1080]
   end
   # ここまで
@@ -365,4 +365,251 @@ class ImageUploader < CarrierWave::Uploader::Base
   #   "something.jpg" if original_filename
   # end
 end
+```
+
+## 5-3 投稿機能の実装
+
+### 1. ルーティングの追加
+
+```
+postsコントローラのnewアクション。投稿ページを表示するルーティング。
+postsコントローラのcreateアクション。投稿を作成るすルーティング。
+photosコントローラのcreateアクション。投稿の写真を保存するルーティング。
+```
+
++ `config/routes.rb`を編集<br>
+
+```rb:routes.rb
+
+```
+
+```
+  posts_new   GET     /posts/new(.:format)                posts#new
+  posts       POST    /posts(.:format)                    posts#create
+  post_photos POST    /posts/:post_id/photos(.:format)    photos#create
+```
+
++ `config/routes.rb`を編集<br>
+
+```rb:routes.rb
+Rails.application.routes.draw do
+  devise_for :users,
+    controllers: { registrations: 'registrations' }
+
+  root 'pages#home'
+
+  get '/users/:id', to: 'users#show', as: 'user'
+
+  # 編集
+  resources :posts, only: %i(new create) do
+    resources :photos, only: %i(create)
+  end
+  # ここまで
+end
+```
+
+```
+post_photos   POST   /posts/:post_id/photos(.:format)       photos#create
+posts         POST   /posts(.:format)                       posts#create
+new_post      GET    /posts/new(.:format)                   posts#new
+```
+
+### 2. コントローラの作成
+
++ `$ rails g controller posts`を実行<br>
+
++ `app/controllers/posts_controller.rb`を編集<br>
+
+```rb:posts_controller.rb
+class PostsController < ApplicationController
+
+  def new
+    @post = Post.new
+    @post.photos.build
+  end
+end
+```
+
++ `build` も `new` と同じくインスタンスを作成するメソッドである。 `build` と `new` に違いはない。<br>
+
++ Railsの監修でモデルを関連付け（今回で言うと、PostモデルとPhotoモデルの関連付け）したときに `build`を使う<br>
+
++ `app/controllers/posts_controller.rb`を編集<br>
+
+```rb:posts_controller.rb
+class PostsController < ApplicationController
+
+  def new
+    @post = Post.new
+    @post.photos.build
+  end
+
+  # 追加
+  def create
+    @post = Post.new(post_params)
+    if @post.photos.present?
+      @post.save
+      redirect_to root_path
+      flash[:notice] = "投稿が保存されました"
+    else
+      redirect_to root_path
+      flash[:alert] = "投稿に失敗しました"
+    end
+  end
+
+  private
+  def post_params
+    params.require(:post).permit(:caption, photos_attributes: [:image]).merge(user_id: current_user.id)
+  end
+  # ここまで
+end
+```
+
++ [[Ruby] privateメソッドの本質とそれを理解するメリット](https://qiita.com/kidach1/items/055021ce42fe2a49fd66) <br>
+
+### accepts_nested_attributes_for
+
++ `accepts_nested_attributes_for`は、親子関係のある関連モデル(今回で言うとPostモデルとPhotoモデル)で、親から子を作成したり保存するときに使えます。<br.
+
++ `app/models/post.rb`を編集<br>
+
+```rb:post.rb
+class Post < ApplicationRecord
+  belongs_to :user
+  has_many :photos, dependent: :destroy
+
+  accepts_nested_attributes_for :photos # 追加
+end
+```
+
+### 4. ビューを作成
+
++ `$ touch app/views/posts/new.html.erb`を実行<br>
+
++ `app/views/posts/new.html.erb`を編集<br>
+
+```html:new.html.erb
+<%= form_with model: @post do |f| %>
+<%= f.label :caption %>
+<%= f.text_field :caption %>
+<%= f.fields_for :photos do |i| %>
+<%= i.file_field :image %>
+<% end %>
+<%= f.submit "投稿", class: "btn btn-primary" %>
+<% end %>
+```
+
++ form_withは Rails5.1から提供されているHTMLフォーム生成メソッドです。<br>
+モデルオプションに、先ほどコントローラー定義した `@post` をモデルオブジェクトとして扱います。<br>
+こうすることで、URLをHTTPメソッドを自動推測します。今回 `@post` は空なので、createアクションに飛びます。<br>
+空ではない時はupdateアクションに飛びます。<br>
+
++ サーバーを再起動して localhost:3000/poosts/new にアクセスして投稿してみる<br>
+
++ `$ rails console`を実行<br>
+
++ `下記を実行`<br>
+
+```
+irb(main):001:0> Post.first
+```
+
++ `result`<br>
+
+```
+irb(main):001:0> Post.first
+  Post Load (3.8ms)  SELECT `posts`.* FROM `posts` ORDER BY `posts`.`id` ASC LIMIT 1
+=> #<Post id: 1, caption: "test", user_id: 1, created_at: "2022-09-16 07:31:02.075218000 +0000", updated_at: "2022-09-16 07:31:02.075218000 +0000">
+irb(main):002:0>
+```
+
++ 下記を実行<br>
+
+```
+irb(main):002:0> Photo.first
+```
+
++ `result`<br>
+
+```
+  Photo Load (2.1ms)  SELECT `photos`.* FROM `photos` ORDER BY `photos`.`id` ASC LIMIT 1
+=> #<Photo id: 1, image: "ゼブラ_パンプス05.jpg", post_id: 1, created_at: "2022-09-16 07:31:02.093428000 +0000", updated_at: "2022-09-16 07:31:02.093428000 +0000">
+irb(main):003:0>
+```
+
+### 5. サインイン済みユーザーのみにアクセス許可
+
++ `app/controllers/posts_controller.rb`を編集<br>
+
+```rb:posts_controller.rb
+class PostsController < ApplicationController
+  before_action :authenticate_user! # サインインしていない状態でnewアクションやcreateアクションを実行しようとすると、サインインページにレダイレクトされる。
+
+  def new
+    @post = Post.new
+    @post.photos.build
+  end
+
+  def create
+    @post = Post.new(post_params)
+    if @post.photos.present?
+      @post.save
+      redirect_to root_path
+      flash[:notice] = "投稿が保存されました"
+    else
+      redirect_to root_path
+      flash[:alert] = "投稿に失敗しました"
+    end
+  end
+
+  private
+  def post_params
+    params.require(:post).permit(:caption, photos_attributes: [:image]).merge(user_id: current_user.id)
+  end
+end
+```
+
+### アップロードした画像はコミットしないようにしよう
+
++ `.gitignore`を編集<br>
+
+```:.gitignore
+# See https://help.github.com/articles/ignoring-files for more about ignoring files.
+#
+# If you find yourself ignoring temporary files generated by your text editor
+# or operating system, you probably want to add a global ignore instead:
+#   git config --global core.excludesfile '~/.gitignore_global'
+
+# Ignore bundler config.
+/.bundle
+
+# Ignore all logfiles and tempfiles.
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+
+# Ignore pidfiles, but keep the directory.
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+
+# Ignore uploaded files in development.
+/storage/*
+!/storage/.keep
+
+/public/assets
+.byebug_history
+
+# Ignore master key for decrypting credentials and more.
+/config/master.key
+
+/public/packs
+/public/packs-test
+/node_modules
+/yarn-error.log
+yarn-debug.log*
+.yarn-integrity
+.DS_Store
+public/uploads/ # 追加
 ```
