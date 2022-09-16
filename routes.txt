@@ -14,10 +14,11 @@
                                          PUT    /users(.:format)                                                                                  registrations#update
                                          DELETE /users(.:format)                                                                                  registrations#destroy
                                          POST   /users(.:format)                                                                                  registrations#create
-                                    root GET    /                                                                                                 pages#home
+                                    root GET    /                                                                                                 posts#index
                                     user GET    /users/:id(.:format)                                                                              users#show
                              post_photos POST   /posts/:post_id/photos(.:format)                                                                  photos#create
-                                   posts POST   /posts(.:format)                                                                                  posts#create
+                                   posts GET    /posts(.:format)                                                                                  posts#index
+                                         POST   /posts(.:format)                                                                                  posts#create
                                 new_post GET    /posts/new(.:format)                                                                              posts#new
            rails_postmark_inbound_emails POST   /rails/action_mailbox/postmark/inbound_emails(.:format)                                           action_mailbox/ingresses/postmark/inbound_emails#create
               rails_relay_inbound_emails POST   /rails/action_mailbox/relay/inbound_emails(.:format)                                              action_mailbox/ingresses/relay/inbound_emails#create
