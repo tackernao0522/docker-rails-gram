@@ -359,3 +359,296 @@ post GET /posts/:id(.:format) posts#show
 </div>
 <% end %>
 ```
+
+### 6-2 投稿の削除機能
+
++ `config/routes.rb`を編集<br>
+
+```rb:routes.rb
+Rails.application.routes.draw do
+  devise_for :users,
+    controllers: { registrations: 'registrations' }
+
+  root 'posts#index'
+
+  get '/users/:id', to: 'users#show', as: 'user'
+
+  resources :posts, only: %i(new create index show destroy) do # 編集
+    resources :photos, only: %i(create)
+  end
+end
+```
+
+```
+post GET    /posts/:id(.:format)          posts#show
+     DELETE /posts/:id(.:format)          posts#destroy
+```
+
+### 2. コントローラの編集
+
++ `app/controlers/posts_controller.rb`を編集<br>
+
+```rb:posts_controller.rb
+class PostsController < ApplicationController
+  before_action :authenticate_user!
+
+  def new
+    @post = Post.new
+    @post.photos.build
+  end
+
+  def create
+    @post = Post.new(post_params)
+    if @post.photos.present?
+      @post.save
+      redirect_to root_path
+      flash[:notice] = "投稿が保存されました"
+    else
+      redirect_to root_path
+      flash[:alert] = "投稿に失敗しました"
+    end
+  end
+
+  def index
+    @posts = Post.limit(10).includes(:photos, :user).order('created_at DESC')
+  end
+
+  def show
+    @post = Post.find_by(id: params[:id])
+  end
+
+  # 追加
+  def destroy
+    @post = Post.find_by(id: params[:id])
+    if @post.user == current_user
+      flash[:notice] = "投稿が削除されました" if @post.destroy
+    else
+      flash[:alert] = "投稿の削除に失敗しました"
+    end
+    redirect_to root_path
+  end
+  # ここまで
+
+  private
+  def post_params
+    params.require(:post).permit(:caption, photos_attributes: [:image]).merge(user_id: current_user.id)
+  end
+end
+```
+
+### リファクタリング
+
++ `app/controlers/posts_controller.rb`を編集<br>
+
+```rb:posts_controller.rb
+class PostsController < ApplicationController
+  before_action :authenticate_user!
+
+  before_action :set_post, only: %i(show destroy) # 追加
+
+  def new
+    @post = Post.new
+    @post.photos.build
+  end
+
+  def create
+    @post = Post.new(post_params)
+    if @post.photos.present?
+      @post.save
+      redirect_to root_path
+      flash[:notice] = "投稿が保存されました"
+    else
+      redirect_to root_path
+      flash[:alert] = "投稿に失敗しました"
+    end
+  end
+
+  def index
+    @posts = Post.limit(10).includes(:photos, :user).order('created_at DESC')
+  end
+
+  def show
+    # @post = Post.find_by(id: params[:id]) 削除
+  end
+
+  def destroy
+    # @post = Post.find_by(id: params[:id]) 削除
+    if @post.user == current_user
+      flash[:notice] = "投稿が削除されました" if @post.destroy
+    else
+      flash[:alert] = "投稿の削除に失敗しました"
+    end
+    redirect_to root_path
+  end
+
+  private
+  def post_params
+    params.require(:post).permit(:caption, photos_attributes: [:image]).merge(user_id: current_user.id)
+  end
+
+  # 追加
+  def set_post
+    @post = Post.find_by(id: params[:id])
+  end
+  # ここまで
+end
+```
+
+### 3. ビューを編集
+
+`post DELETE /posts/:id(.:format) posts#destroy`<br>
+
++ `app/views/posts/index.html.erb`を編集<br>
+
+```html:index.html.erb
+<% @posts.each do |post| %>
+<div class="col-md-8 col-md-2 mx-auto">
+  <div class="card-wrap">
+    <div class="card">
+      <div class="card-header align-items-center d-flex">
+        <%= link_to user_path(post.user), class: "no-text-decoration" do %>
+        <%= image_tag avatar_url(post.user), class: "post-profile-icon" %>
+        <% end %>
+        <%= link_to user_path(post.user), class: "black-color no-text-decoration",
+            title: post.user.name do %>
+        <strong><%= post.user.name %></strong>
+        <% end %>
+
+        <!-- 追加 -->
+        <% if post.user_id == current_user.id %>
+        <%= link_to post_path(post), method: :delete, class: "ml-auto mx-0 my-auto" do %>
+        <div class="delete-post-icon">
+        </div>
+        <% end %>
+        <% end %>
+        <!-- ここまで -->
+      </div>
+
+      <%= link_to(post_path(post)) do %>
+      <%= image_tag post.photos.first.image.url(:medium), class: "card-img-top" %>
+      <% end %>
+
+      <div class="card-body">
+        <div class="row parts">
+          <%= link_to "", "#", class: "love" %>
+          <%= link_to "", "#", class: "comment" %>
+        </div>
+        <div><strong>「いいね！」10件</strong></div>
+        <div>
+          <span><strong><%= post.user.name %></strong></span>
+          <span><%= post.caption %></span>
+          <%= link_to time_ago_in_words(post.created_at).upcase + "前", post_path(post), class: "post-time no-text-decoration" %>
+          <hr>
+          <div class="row parts">
+            <form action="#" class="w-100">
+              <div>
+                <textarea class="form-control comment-input border-0" placeholder="コメント..." rows="1"></textarea>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+```
+
++ `app/javascript/stylesheets/posts.scss`を編集<br>
+
+```scss:posts.scss
+.post-profile-icon {
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.card-wrap {
+  margin: 40px 0px;
+}
+
+.no-text-decoration:hover {
+  text-decoration: none;
+}
+
+.black-color {
+  color: #262626;
+}
+
+.parts {
+  margin: 12px 0;
+}
+
+.love {
+  background-image: url('~parts5');
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  background-size: 36px !important;
+}
+
+.comment {
+  margin-left: 8px;
+  background-image: url('~parts6');
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  background-size: 40px !important;
+}
+
+.post-time {
+  margin: 0;
+  color: #999;
+  font-size: 10px;
+}
+
+.post-sub-text {
+  text-decoration: none;
+  color: #262626;
+}
+
+.post-wrap .col-md-8 {
+  padding: 0px;
+}
+
+.card-right {
+  padding: 20px;
+}
+
+.card-right-name {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6e6e6;
+  display: flex;
+}
+
+.card-right-comment {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6e6e6;
+  height: 320px;
+  overflow: auto;
+}
+
+.postShow-wrap {
+  border: 1px solid #e6e6e6;
+  margin: 40px;
+}
+
+.post-user-name {
+  display: flex;
+  align-items: center;
+  line-height: 0;
+}
+
+// 追加
+.delete-post-icon {
+  background-image: url('~parts9');
+  background-repeat: no-repeat;
+  width: 20px;
+  height: 20px;
+  background-size: 20px !important;
+  color: #262626;
+  font-size: 20px;
+}
+// ここまで
+```
