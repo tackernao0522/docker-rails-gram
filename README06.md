@@ -57,3 +57,305 @@
   </div>
 </div>
 ```
+
+# 6章: 投稿機能の詳細・削除機能
+
+## 6-1 投稿の詳細ページの作成
+
+### 1. ルーティングの設定
+
++ `config/routes.rb
+
+```rb:routes.rb
+Rails.application.routes.draw do
+  devise_for :users,
+    controllers: { registrations: 'registrations' }
+
+  root 'posts#index'
+
+  get '/users/:id', to: 'users#show', as: 'user'
+
+  resources :posts, only: %i(new create index show) do # 編集
+    resources :photos, only: %i(create)
+  end
+end
+```
+
+```
+post GET   /posts/:id(.:format)    posts#show
+```
+
+### 2. コントローラの編集
+
++ `app/controllers/posts_controller.rb`を編集<br>
+
+```rb:posts_controller.rb
+class PostsController < ApplicationController
+  before_action :authenticate_user!
+
+  def new
+    @post = Post.new
+    @post.photos.build
+  end
+
+  def create
+    @post = Post.new(post_params)
+    if @post.photos.present?
+      @post.save
+      redirect_to root_path
+      flash[:notice] = "投稿が保存されました"
+    else
+      redirect_to root_path
+      flash[:alert] = "投稿に失敗しました"
+    end
+  end
+
+  def index
+    @posts = Post.limit(10).includes(:photos, :user).order('created_at DESC')
+  end
+
+  # 追加
+  def show
+    @post = Post.find_by(id: params[:id])
+  end
+  # ここまで
+
+  private
+  def post_params
+    params.require(:post).permit(:caption, photos_attributes: [:image]).merge(user_id: current_user.id)
+  end
+end
+```
+
+### 3. ビューを作成・編集
+
++ `$ touch app/views/posts/show.html.erb`を実行<br>
+
++ `app/views/posts/show.html.erb`を編集<br>
+
+```html:show.html.erb
+<div class="col-md-10 col-md-offset-1 mx-auto postShow-wrap">
+  <div class="row post-wrap">
+    <div class="col-md-8">
+      <div class="card-left">
+        <%= image_tag @post.photos.first.image.url(:medium), class: "card-img-top" %>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card-right">
+        <div class="card-right-comment">
+          <div class="card-right-name">
+            <%= link_to user_path(@post.user), class: "no-text-decoration" do %>
+            <%= image_tag avatar_url(@post.user), class: "post-profile-icon" %>
+            <% end %>
+            <%= link_to user_path(@post.user), class: "black-color no-text-decoration post-user-name", title: @post.user.name do %>
+            <strong><%= @post.user.name %></strong>
+            <% end %>
+          </div>
+          <div class="m-2">
+            <strong>
+              <%= @post.caption %>
+            </strong>
+          </div>
+          <div class="comment-post-id">
+            <div class="m-2">
+            </div>
+          </div>
+        </div>
+        <div class="row parts">
+        </div>
+        <div class="post-time"><%= time_ago_in_words(@post.created_at).upcase %>前</div>
+        <hr>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
++ `app/javascript/stylesheets/post.scss`を編集<br>
+
+```scss:post.scss
+.post-profile-icon {
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.card-wrap {
+  margin: 40px 0px;
+}
+
+.no-text-decoration:hover {
+  text-decoration: none;
+}
+
+.black-color {
+  color: #262626;
+}
+
+.parts {
+  margin: 12px 0;
+}
+
+.love {
+  background-image: url('~parts5');
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  background-size: 36px !important;
+}
+
+.comment {
+  margin-left: 8px;
+  background-image: url('~parts6');
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  background-size: 40px !important;
+}
+
+.post-time {
+  margin: 0;
+  color: #999;
+  font-size: 10px;
+}
+
+.post-sub-text {
+  text-decoration: none;
+  color: #262626;
+}
+
+// 追加
+.post-wrap .col-md-8 {
+  padding: 0px;
+}
+
+.card-right {
+  padding: 20px;
+}
+
+.card-right-name {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6e6e6;
+  display: flex;
+}
+
+.card-right-comment {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6e6e6;
+  height: 320px;
+  overflow: auto;
+}
+
+.postShow-wrap {
+  border: 1px solid #e6e6e6;
+  margin: 40px;
+}
+
+.post-user-name {
+  display: flex;
+  align-items: center;
+  line-height: 0;
+}
+// ここまで
+```
+### 投稿詳細ページに遷移するリンクを追加
+
+```
+post GET /posts/:id(.:format) posts#show
+```
+
++ `app/views/posts/index.html.erb`を編集<br>
+
+```html:index.html.erb
+<% @posts.each do |post| %>
+<div class="col-md-8 col-md-2 mx-auto">
+  <div class="card-wrap">
+    <div class="card">
+      <div class="card-header align-items-center d-flex">
+        <%= link_to user_path(post.user), class: "no-text-decoration" do %>
+        <%= image_tag avatar_url(post.user), class: "post-profile-icon" %>
+        <% end %>
+        <%= link_to user_path(post.user), class: "black-color no-text-decoration",
+            title: post.user.name do %>
+        <strong><%= post.user.name %></strong>
+        <% end %>
+      </div>
+
+      <%= link_to(post_path(post)) do %> <!-- 追加 @postsを each で１つずつ順に取り出した post という変数を引数に渡す -->
+      <%= image_tag post.photos.first.image.url(:medium), class: "card-img-top" %>
+      <% end %> <!-- 追加 -->
+
+      <div class="card-body">
+        <div class="row parts">
+          <%= link_to "", "#", class: "love" %>
+          <%= link_to "", "#", class: "comment" %>
+        </div>
+        <div><strong>「いいね！」10件</strong></div>
+        <div>
+          <span><strong><%= post.user.name %></strong></span>
+          <span><%= post.caption %></span>
+          <%= link_to time_ago_in_words(post.created_at).upcase + "前", "#", class: "post-time no-text-decoration" %>
+          <hr>
+          <div class="row parts">
+            <form action="#" class="w-100">
+              <div>
+                <textarea class="form-control comment-input border-0" placeholder="コメント..." rows="1"></textarea>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+```
+
++ `app/views/posts/index.html.erb`を編集<br>
+
+```html:index.html.erb
+<% @posts.each do |post| %>
+<div class="col-md-8 col-md-2 mx-auto">
+  <div class="card-wrap">
+    <div class="card">
+      <div class="card-header align-items-center d-flex">
+        <%= link_to user_path(post.user), class: "no-text-decoration" do %>
+        <%= image_tag avatar_url(post.user), class: "post-profile-icon" %>
+        <% end %>
+        <%= link_to user_path(post.user), class: "black-color no-text-decoration",
+            title: post.user.name do %>
+        <strong><%= post.user.name %></strong>
+        <% end %>
+      </div>
+
+      <%= link_to(post_path(post)) do %>
+      <%= image_tag post.photos.first.image.url(:medium), class: "card-img-top" %>
+      <% end %>
+
+      <div class="card-body">
+        <div class="row parts">
+          <%= link_to "", "#", class: "love" %>
+          <%= link_to "", "#", class: "comment" %>
+        </div>
+        <div><strong>「いいね！」10件</strong></div>
+        <div>
+          <span><strong><%= post.user.name %></strong></span>
+          <span><%= post.caption %></span>
+          <%= link_to time_ago_in_words(post.created_at).upcase + "前", post_path(post), class: "post-time no-text-decoration" %> <!-- 編集 -->
+          <hr>
+          <div class="row parts">
+            <form action="#" class="w-100">
+              <div>
+                <textarea class="form-control comment-input border-0" placeholder="コメント..." rows="1"></textarea>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+```
