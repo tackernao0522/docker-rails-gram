@@ -121,3 +121,379 @@ class Comment < ApplicationRecord
   belongs_to :post # 追加
 end
 ```
+
+## 8-2 コメント機能の実装
+
+### 1. ルーティングの追加
+
+```
+commentsコントローラーのcreateアクション。コメントの情報を保存するルーティング。
+commentsコントローラーのdestoryアクション。コメントの情報を削除するルーティング。
+```
+
++ `config/routes.rb`を編集<br>
+
+```rb:routes.rb
+Rails.application.routes.draw do
+  devise_for :users,
+    controllers: { registrations: 'registrations' }
+
+  root 'posts#index'
+
+  get '/users/:id', to: 'users#show', as: 'user'
+
+  resources :posts, only: %i(new create index show destroy) do
+    resources :photos, only: %i(create)
+    resources :likes, only: %i(create destroy)
+    resources :comments, only: %i(create destroy) # 追加
+  end
+end
+```
+
+```
+post_comments POST   /posts/:post_id/comments(.:format)      comments#create
+post_comment  DELETE /posts/:post_id/comments/:id(.:format)  comments#destroy
+```
+
+### 2. コントローラの作成
+
++ `$ rails g controller comments`を実行<br>
+
++ `app/controllers/comments_controller.rb`を編集<br>
+
+### 3. 作成したコントローラにアクションを追加
+
+```rb:comments_controller.rb
+class CommentsController < ApplicationController
+  before_action :authenticate_user!
+
+  def create
+    @comment = Comment.new(comment_params)
+    @post = @comment.post
+    if @comment.save
+      respond_to :js
+    else
+      flash[:alert] = "コメントに失敗しました"
+    end
+  end
+
+  def destroy
+    @comment = Comment.find_by(id: params[:id])
+    @post = @comment.post
+    if @comment.destroy
+      respond_to :js
+    else
+      flash[:alert] = "コメントの削除に失敗しました"
+    end
+  end
+
+  private
+
+  def comment_params
+    params.required(:comment).permit(:user_id, :post_id, :comment)
+  end
+end
+```
+
+### 4. ビューを作成
+
++ `app/views/posts/index.html.erb`を編集<br>
+
+```html:index.html.erb
+<% @posts.each do |post| %>
+<div class="col-md-8 col-md-2 mx-auto">
+  <div class="card-wrap">
+    <div class="card">
+      <div class="card-header align-items-center d-flex">
+        <%= link_to user_path(post.user), class: "no-text-decoration" do %>
+        <%= image_tag avatar_url(post.user), class: "post-profile-icon" %>
+        <% end %>
+        <%= link_to user_path(post.user), class: "black-color no-text-decoration",
+            title: post.user.name do %>
+        <strong><%= post.user.name %></strong>
+        <% end %>
+
+        <% if post.user_id == current_user.id %>
+        <%= link_to post_path(post), method: :delete, class: "ml-auto mx-0 my-auto" do %>
+        <div class="delete-post-icon">
+        </div>
+        <% end %>
+        <% end %>
+      </div>
+
+      <%= link_to(post_path(post)) do %>
+      <%= image_tag post.photos.first.image.url(:medium), class: "card-img-top" %>
+      <% end %>
+
+      <div class="card-body">
+        <div class="row parts">
+          <div id="like-icon-post-<%= post.id.to_s %>">
+            <% if post.liked_by(current_user).present? %>
+            <%= link_to "いいねを取り消す", post_like_path(post.id, post.liked_by(current_user)), method: :DELETE, remote: true, class: "loved hide-text" %>
+            <% else %>
+            <%= link_to "いいね", post_likes_path(post), method: :POST, remote: true, class: "love hide-text" %>
+            <% end %>
+          </div>
+          <%= link_to "", "#", class: "comment" %>
+        </div>
+        <div id="like-text-post-<%= post.id.to_s %>">
+          <%= render "like_text", { likes: post.likes } %>
+        </div>
+        <div>
+          <span><strong><%= post.user.name %></strong></span>
+          <span><%= post.caption %></span>
+          <%= link_to time_ago_in_words(post.created_at).upcase + "前", post_path(post), class: "post-time no-text-decoration" %>
+          <!-- 編集 -->
+          <div id="comment-post-<%= post.id.to_s %>">
+            <%= render 'comment_list', { post: post } %>
+          </div>
+          <%= link_to time_ago_in_words(post.created_at).upcase + "前", post_path, class: "light-color post-time no-text-decoration" %>
+          <hr>
+          <div class="row actions" id="comment-form-post-<%= post.id.to_s %>">
+            <%= form_with model: [post, Comment.new], local: false, class: "w-100" do |f| %>
+            <%= f.hidden_field :user_id, value: current_user.id %>
+            <%= f.hidden_field :post_id, value: post.id %>
+            <%= f.text_field :comment, class: "form-control comment-input border-0", placeholder: "コメント...", autocomplete: :off %>
+            <% end %>
+          </div>
+          <!-- ここまで -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+```
+
++ `touch app/views/posts/_comment_list.html.erb`を実行<br>
+
++ `app/views/posts/_comment_list.html.erb`を編集<br>
+
+```html:_comment_list.html.erb
+<% post.comments.each do |comment| %>
+<div class="mb-2">
+  <% if comment.user == current_user %>
+  <%= link_to "", post_comment_path(post.id, comment), method: :delete, remote: true, class: "delete-comment" %>
+  <% end %>
+  <span>
+    <strong>
+      <%= link_to comment.user.name, user_path(comment.user), class: "no-text-decoration black-color" %>
+    </strong>
+  </span>
+  <span><%= comment.comment %></span>
+</div>
+<% end %>
+```
+
++ `app/javascript/stylesheets/posts.scss`を編集<br>
+
+```scss:posts.scss
+.post-profile-icon {
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.card-wrap {
+  margin: 40px 0px;
+}
+
+.no-text-decoration:hover {
+  text-decoration: none;
+}
+
+.black-color {
+  color: #262626;
+}
+
+.parts {
+  margin: 12px 0;
+}
+
+.love {
+  background-image: url('~parts5');
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  background-size: 36px !important;
+}
+
+.comment {
+  margin-left: 8px;
+  background-image: url('~parts6');
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  background-size: 40px !important;
+}
+
+.post-time {
+  margin: 0;
+  color: #999;
+  font-size: 10px;
+}
+
+.post-sub-text {
+  text-decoration: none;
+  color: #262626;
+}
+
+.post-wrap .col-md-8 {
+  padding: 0px;
+}
+
+.card-right {
+  padding: 20px;
+}
+
+.card-right-name {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6e6e6;
+  display: flex;
+}
+
+.card-right-comment {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6e6e6;
+  height: 320px;
+  overflow: auto;
+}
+
+.postShow-wrap {
+  border: 1px solid #e6e6e6;
+  margin: 40px;
+}
+
+.post-user-name {
+  display: flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.delete-post-icon {
+  background-image: url('~parts9');
+  background-repeat: no-repeat;
+  width: 20px;
+  height: 20px;
+  background-size: 20px !important;
+  color: #262626;
+  font-size: 20px;
+}
+
+.loved {
+  background-image: url('~parts7');
+  background-repeat: no-repeat;
+  height: 36px;
+  width: 36px;
+  background-size: 36px !important;
+}
+
+.hide-text {
+  display: block;
+  overflow: hidden;
+  text-indent: 110%;
+  white-space: nowrap;
+}
+
+// 追加
+.delete-comment {
+  background-image: url('~parts8');
+  background-repeat: no-repeat;
+  width: 11px;
+  height: 11px;
+  float: right;
+  margin: 5px 0 0 10px;
+  background-size: 11px !important;
+}
+```
+
++ `touch app/views/comments/create.js.erb`を実行<br>
+
++ `app/views/comments/create.js.erb`を編集<br>
+
+```js:create.js.erb
+$('#comment-post-<%= @post.id.to_s %>').
+html('<%= j render "posts/comment_list", { post: @post } %>');
+$('#comment-form-post-<%= @post.id.to_s %> #comment_comment').val("");
+```
+
++ `touch app/views/comments/destroy.js.erb`を実行<br>
+
++ `app/views/comments/destroy.js.erb`を編集<br>
+
+```js:destroy.js.erb
+$('#comment-post-<%= @post.id.to_s %>').
+html('<%= j render "posts/comment_list", { post: @post } %>');
+```
+
+### 投稿詳細ページのビューを編集
+
++ `app/views/posts/show.html.erb`を編集<br>
+
+```html:show.html.erb
+<div class="col-md-10 col-md-offset-1 mx-auto postShow-wrap">
+  <div class="row post-wrap">
+    <div class="col-md-8">
+      <div class="card-left">
+        <%= image_tag @post.photos.first.image.url(:medium), class: "card-img-top" %>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card-right">
+        <div class="card-right-comment">
+          <div class="card-right-name">
+            <%= link_to user_path(@post.user), class: "no-text-decoration" do %>
+            <%= image_tag avatar_url(@post.user), class: "post-profile-icon" %>
+            <% end %>
+            <%= link_to user_path(@post.user), class: "black-color no-text-decoration post-user-name", title: @post.user.name do %>
+            <strong><%= @post.user.name %></strong>
+            <% end %>
+          </div>
+          <div class="m-2">
+            <strong>
+              <%= @post.caption %>
+            </strong>
+          </div>
+          <div class="comment-post-id">
+            <div class="m-2">
+              <!-- 追加 -->
+              <div id="comment-post-<%= @post.id.to_s %>">
+                <%= render 'comment_list', post: @post %>
+              </div>
+              <!-- ここまで -->
+            </div>
+          </div>
+        </div>
+        <!-- 追加 -->
+        <div class="row parts">
+          <div id="like-icon-post-<%= @post.id.to_s %>">
+            <% if @post.liked_by(current_user).present? %>
+            <%= link_to "いいねを取り消す", post_like_path(@post.id, @post.liked_by(current_user)), method: :DELETE, remote: true, class: "loved hide-text" %>
+            <% else %>
+            <%= link_to "いいね", post_likes_path(@post), method: :POST, remote: true, class: "love hide-text" %>
+            <% end %>
+          </div>
+        </div>
+
+        <div id="like-text-post-<%= @post.id.to_s %>">
+          <%= render "like_text", { likes: @post.likes } %>
+        </div>
+
+        <div class="post-time"><%= time_ago_in_words(@post.created_at).upcase %>前</div>
+        <hr>
+
+        <div class="row parts" id="comment-form-post-<%= @post.id.to_s %>">
+          <%= form_with model: [@post, Comment.new], local: false, class: "w-100" do |f| %>
+          <%= f.hidden_field :user_id, value: current_user.id %>
+          <%= f.hidden_field :post_id, value: @post.id %>
+          <%= f.text_field :comment, class: "form-control comment-input border-0", placeholder: "コメント...", autocomplete: :off %>
+          <% end %>
+        </div>
+        <!-- ここまで -->
+
+      </div>
+    </div>
+  </div>
+</div>
+```
